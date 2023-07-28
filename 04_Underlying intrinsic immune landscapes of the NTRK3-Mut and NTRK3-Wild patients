@@ -1,0 +1,419 @@
+################################4.1 TCR/BCR
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/Thorsson"
+# 设置工作目录
+setwd(work_dir)
+
+
+Thorsson_NTRK3 <-read.csv("03_Thorsson_NTRK3.csv",row.names = 1,check.names=FALSE)
+##小提琴图+箱线图
+library(ggpubr)
+library(ggplot2)
+library(RColorBrewer)
+
+#使用ggplot2包生成箱线图
+compaired <- list(c("Wild", "XMut")) 
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$BCR_Richness),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(24,64)]
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$BCR_Shannon),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(23,64)]
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$TCR_Richness),]
+Thorsson_Mut <- Thorsson[,c(26,64)]
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$TCR_Shannon),]
+Thorsson_Mut <- Thorsson[,c(25,64)]
+
+# Basic violin plot#
+######################
+Thorsson_Mut$TCR_Rich <- log10(Thorsson_Mut$TCR_Richness +1)
+
+p <- ggplot(Thorsson_Mut, aes(x=NTRK3, y=TCR_Shannon,fill=NTRK3)) + 
+  geom_violin(position=position_dodge(0.6))+ 
+  theme_classic()+
+  theme(legend.position="top")+
+  labs(x=NULL,y = "TCR Shannon")+
+  stat_compare_means(label = "p.format",hide.ns = TRUE)#p.format label.y
+p
+p+stat_summary(fun.data=mean_sdl, fun.args = list(mult=1), 
+               geom="pointrange", color="white",position=position_dodge(0.6))
+
+
+
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/Thorsson"
+# 设置工作目录
+setwd(work_dir)
+
+TCGA <-read.csv("02_TCGA_clinical_TMB_MSI.csv",row.names = 1,check.names=FALSE)
+Thorsson <-read.csv("Thorsson.csv",row.names = 1,check.names=FALSE)
+
+k <- rownames(Thorsson)
+row = match(k,rownames(TCGA))
+row = na.omit(row)
+clin =TCGA[row,]
+
+k <- rownames(clin)
+row = match(k,rownames(Thorsson))
+row = na.omit(row)
+Thorsson_NTRK3 =Thorsson[row,]
+
+Thorsson_NTRK3$NTRK3 <- clin$NTRK3
+write.csv(Thorsson_NTRK3,file = "03_Thorsson_NTRK3.csv")
+
+
+
+################################4.2 mutation burden
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("03_Thorsson_NTRK3.csv",row.names = 1,check.names=FALSE)
+##误差条图+箱线图+散点图
+library(ggplot2)
+library(RColorBrewer)
+
+#使用ggplot2包生成箱线图
+compaired <- list(c("Wild", "XMut")) 
+#log10(10)
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$Silent_Mutation_Rate),]
+Thorsson$Neoantigen <- log10(Thorsson$Silent_Mutation_Rate +1)
+table(Thorsson$NTRK3)
+
+Thorsson_Mut <- Thorsson[,c(64,65)]
+P1 <- ggplot(Thorsson_Mut,aes(x=NTRK3,y=Neoantigen,fill=NTRK3))+ #”fill=“设置填充颜色
+  stat_boxplot(geom = "errorbar",width=0.15,aes(color="black"))+ #由于自带的箱形图没有胡须末端没有短横线，使用误差条的方式补上
+  geom_boxplot(size=0.5,outlier.fill="white",outlier.color="white")+ #size设置箱线图的边框线和胡须的线宽度，fill设置填充颜色，outlier.fill和outlier.color设置异常点的属性
+  #geom_jitter(aes(fill=NTRK3),width =0.2,shape = 21,size=2.5)+ #设置为向水平方向抖动的散点图，width指定了向水平方向抖动，不改变纵轴的值
+  scale_fill_manual(values = c("#E69F00", "#0072B2"))+  #设置填充的颜色"#F0E442"
+  scale_color_manual(values=c("black","black"))+ #设置散点图的圆圈的颜色为黑色"black"
+  ggtitle(" ")+ #设置总的标题
+  theme_bw()+ #背景变为白色
+  theme(legend.position="none", #不需要图例
+        axis.text.x=element_text(colour="black",family="Times",size=14), #设置x轴刻度标签的字体属性
+        axis.text.y=element_text(family="Times",size=14,face="plain"), #设置x轴刻度标签的字体属性
+        axis.title.y=element_text(family="Times",size = 14,face="plain"), #设置y轴的标题的字体属性
+        axis.title.x=element_text(family="Times",size = 14,face="plain"), #设置x轴的标题的字体属性
+        plot.title = element_text(family="Times",size=15,face="bold",hjust = 0.5), #设置总标题的字体属性
+        panel.grid.major = element_blank(), #不显示网格线
+        panel.grid.minor = element_blank())+
+  ylab("Nonsilent Mutation Rate")+xlab(" ") #设置x轴和y轴的标题
+P1+stat_compare_means(comparisons = compaired, method = "wilcox.test",label = "p.value")#,label.y = 0.5) 
+
+
+# Basic violin plot#
+######################
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("03_Thorsson_NTRK3.csv",row.names = 1,check.names=FALSE)
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$Indel_Neoantigens),]
+Thorsson$Neoantigen <- log10(Thorsson$Indel_Neoantigens +1)
+table(Thorsson$NTRK3)
+
+Thorsson_Mut <- Thorsson[,c(64,65)]
+
+library(ggplot2)
+library(ggpubr)
+
+p <- ggplot(Thorsson_Mut, aes(x=NTRK3, y=Neoantigen,fill=NTRK3)) + 
+  geom_violin(position=position_dodge(0.6))+ 
+  theme_classic()+
+  theme(legend.position="top")+
+  labs(x=NULL,y = "silent Mutation Rate")+
+  stat_compare_means(label = "p.signif",hide.ns = TRUE)#p.format label.y
+p
+p+stat_summary(fun.data=mean_sdl, fun.args = list(mult=1), 
+               geom="pointrange", color="white",position=position_dodge(0.6))
+
+
+
+################################4.3 PDL1 CTLA4 PD1 TIGIT LIG3
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/PDL1_CTLA4"
+# 设置工作目录
+setwd(work_dir)
+
+
+
+TCGA <-read.csv("07_MHC_NTRK3.csv",row.names = 1,check.names=FALSE)
+Exp <- TCGA[,c(45,57,47,56,60,26,34,64)]
+
+
+##误差条图+箱线图+散点图
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+
+#使用ggplot2包生成箱线图
+##TMB
+compaired <- list(c("Wild", "XMut")) 
+Exp$gene <- log10(Exp$TIGIT+1)
+
+P1 <- ggplot(Exp,aes(x=NTRK3,y=gene,color=NTRK3))+ #”fill=“设置填充颜色
+  geom_boxplot()+ 
+  ggtitle(" ")+ #设置总的标题
+  theme_bw()+ #背景变为白色
+  theme(legend.position="none", #不需要图例
+        axis.text.x=element_text(colour="black",family="Times",size=14), #设置x轴刻度标签的字体属性
+        axis.text.y=element_text(family="Times",size=14,face="plain"), #设置x轴刻度标签的字体属性
+        axis.title.y=element_text(family="Times",size = 14,face="plain"), #设置y轴的标题的字体属性
+        axis.title.x=element_text(family="Times",size = 14,face="plain"), #设置x轴的标题的字体属性
+        plot.title = element_text(family="Times",size=15,face="bold",hjust = 0.5), #设置总标题的字体属性
+        panel.grid.major = element_blank(), #不显示网格线
+        panel.grid.minor = element_blank())+
+  ylab("lg(TIGIT)")+xlab(" ") #设置x轴和y轴的标题
+P1+stat_compare_means(comparisons = compaired, method = "wilcox.test",label = "p.value")#,label.y = 0.5) 
+
+
+##CYT
+compaired <- list(c("Wild", "XMut")) 
+Exp$gene <- (Exp$GZMA)*(Exp$PRF1)
+Exp$Gene <- sqrt(Exp$gene)
+Exp$Gene <- log10(Exp$Gene+1)
+
+P1 <- ggplot(Exp,aes(x=NTRK3,y=Gene,fill=NTRK3))+ #”fill=“设置填充颜色
+  stat_boxplot(geom = "errorbar",width=0.15,aes(color="black"))+ #由于自带的箱形图没有胡须末端没有短横线，使用误差条的方式补上
+  geom_boxplot(size=0.5,outlier.fill="white",outlier.color="white")+ #size设置箱线图的边框线和胡须的线宽度，fill设置填充颜色，outlier.fill和outlier.color设置异常点的属性
+  #geom_jitter(aes(fill=NTRK3),width =0.2,shape = 21,size=2.5)+ #设置为向水平方向抖动的散点图，width指定了向水平方向抖动，不改变纵轴的值
+  scale_fill_manual(values = c("#E69F00", "#0072B2"))+  #设置填充的颜色"#F0E442"
+  scale_color_manual(values=c("black","black"))+ #设置散点图的圆圈的颜色为黑色"black"
+  ggtitle(" ")+ #设置总的标题
+  theme_bw()+ #背景变为白色
+  theme(legend.position="none", #不需要图例
+        axis.text.x=element_text(colour="black",family="Times",size=14), #设置x轴刻度标签的字体属性
+        axis.text.y=element_text(family="Times",size=14,face="plain"), #设置x轴刻度标签的字体属性
+        axis.title.y=element_text(family="Times",size = 14,face="plain"), #设置y轴的标题的字体属性
+        axis.title.x=element_text(family="Times",size = 14,face="plain"), #设置x轴的标题的字体属性
+        plot.title = element_text(family="Times",size=15,face="bold",hjust = 0.5), #设置总标题的字体属性
+        panel.grid.major = element_blank(), #不显示网格线
+        panel.grid.minor = element_blank())+
+  ylab("lg(CYT)")+xlab(" ") #设置x轴和y轴的标题
+P1+stat_compare_means(comparisons = compaired, method = "wilcox.test",label = "p.value")#,label.y = 0.5) 
+
+
+
+
+################################4.4 MHC 
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/MHC_Chemokine"
+# 设置工作目录
+setwd(work_dir)
+
+TCGA <-read.csv("01_TCGA_NTRK3_clin.csv")
+TCGA_Mut <-TCGA[!duplicated(TCGA$PATIENT_ID),]
+
+MHC <-read.csv("06_TCGA_MHC.csv",row.names = 1,check.names=FALSE)
+
+k <- rownames(MHC)
+row = match(k,TCGA_Mut$PATIENT_ID)
+row = na.omit(row)
+clin =TCGA_Mut[row,]
+
+k <- clin$PATIENT_ID
+row = match(k,rownames(MHC))
+row = na.omit(row)
+MHC_NTRK3 =MHC[row,]
+
+MHC_NTRK3$NTRK3 <- clin$NTRK3
+write.csv(MHC_NTRK3,file = "07_MHC_NTRK3.csv")
+
+
+###Mut Wild P
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("07_MHC_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+library(ggpubr)
+compare_means(TAP2 ~ NTRK3, data = Thorsson_NTRK3)
+
+#求均值
+Mut_NTRK3 <- Thorsson_NTRK3[,c(1:6)]
+exp <- apply(Mut_NTRK3, 2, scale)
+rownames(exp) <- rownames(Mut_NTRK3)
+expr <- as.data.frame(exp)
+expr$NTRK3 <- Thorsson_NTRK3$NTRK3
+Data <- aggregate(expr[,c(1:6)],by = list(NTRK3 = expr$NTRK3),mean)
+rownames(Data) <- Data[,1]
+Data <-  Data[,-1]
+
+#Data <- aggregate(Thorsson_NTRK3[,c(1:6)],by = list(NTRK3 = Thorsson_NTRK3$NTRK3),mean)
+#rownames(Data) <- Data[,1]
+#Data <-  Data[,-1]
+#Exp <- log10(Data)
+library(circlize)
+col_fun <- colorRamp2(
+  c(-0.2,0, 0.2), 
+  c("#01665e", "#8c510a", "red")#"#01665e"#8c510a
+)
+
+library(ComplexHeatmap)
+matt <- t(Data)
+Heatmap(
+  matt, 
+  name = "Expression",
+  col = col_fun,
+  column_order = order(colnames(matt)),
+  row_order = order(rownames(matt))
+)
+
+
+
+
+Thorsson_NTRK3 <-read.csv("07_MHC_NTRK3_Heatmap.csv",row.names = 1,check.names=FALSE)
+
+##热图
+library(ComplexHeatmap)
+Mut_NTRK3 <- Thorsson_NTRK3[c(1:6),]
+
+exp <- apply(Mut_NTRK3, 1, scale)
+rownames(exp) <- colnames(Mut_NTRK3)
+expr <- as.data.frame(t(exp))
+Heatmap(expr)
+
+
+#使用ggplot2包生成箱线图
+compaired <- list(c("Wild", "XMut")) 
+
+
+Thorsson_NTRK3$Neoantigen <- log10(Thorsson_NTRK3$B2M +1)
+table(Thorsson_NTRK3$NTRK3)
+
+Thorsson_Mut <- Thorsson_NTRK3[,c(60,61)]
+
+
+
+
+library(ComplexHeatmap)
+library(circlize)
+
+
+set.seed(123)
+mat <- matrix(rnorm(100), 10)
+rownames(mat) <- paste0("R", 1:10)
+colnames(mat) <- paste0("C", 1:10)
+
+column_ha <- HeatmapAnnotation(
+  foo1 = runif(10), 
+  bar1 = anno_barplot(runif(10))
+)
+row_ha <- rowAnnotation(
+  foo2 = runif(10), 
+  bar2 = anno_barplot(runif(10))
+)
+
+
+library(circlize)
+col_fun <- colorRamp2(
+  c(-2, 0, 2), 
+  c("#8c510a", "white", "#01665e")
+)
+
+matt <- mat[,c(1:2)]
+Heatmap(
+  matt, 
+  name = "matt",
+  col = col_fun,
+  column_order = order(colnames(matt)),
+  row_order = order(rownames(matt))
+)
+
+rm(list=ls())
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/MHC_Chemokine"
+setwd(work_dir)
+
+
+Thorsson_NTRK3 <-read.csv("07_MHC_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+library(ggpubr)
+compare_means(`HLA-DQA1` ~ NTRK3, data = Thorsson_NTRK3)
+
+#Costimulators
+Mut_NTRK3 <- Thorsson_NTRK3[,c(16:41)]
+exp <- apply(Mut_NTRK3, 2, scale)
+rownames(exp) <- rownames(Mut_NTRK3)
+expr <- as.data.frame(exp)
+expr$NTRK3 <- Thorsson_NTRK3$NTRK3
+Data <- aggregate(expr[,c(1:26)],by = list(NTRK3 = expr$NTRK3),mean)
+rownames(Data) <- Data[,1]
+Data <-  Data[,-1]
+
+library(circlize)
+col_fun <- colorRamp2(
+  c(-0.2,0, 0.2), 
+  c("#01665e", "#8c510a", "red")#"#01665e"#8c510a
+)
+
+
+library(ComplexHeatmap)
+matt <- t(Data)
+Heatmap(
+  matt, 
+  name = "Expression",
+  col = col_fun,
+  column_order = order(colnames(matt)),
+  row_order = order(rownames(matt))
+)
+
+
+#Coinhibitors
+Mut_NTRK3 <- Thorsson_NTRK3[,c(42:63)]
+exp <- apply(Mut_NTRK3, 2, scale)
+rownames(exp) <- rownames(Mut_NTRK3)
+expr <- as.data.frame(exp)
+expr$NTRK3 <- Thorsson_NTRK3$NTRK3
+Data <- aggregate(expr[,c(1:22)],by = list(NTRK3 = expr$NTRK3),mean)
+rownames(Data) <- Data[,1]
+Data <-  Data[,-1]
+
+library(circlize)
+col_fun <- colorRamp2(
+  c(-0.2,0, 0.2), 
+  c("#01665e", "#8c510a", "red")#"#01665e"#8c510a
+)
+
+
+library(ComplexHeatmap)
+matt <- t(Data)
+Heatmap(
+  matt, 
+  name = "Expression",
+  col = col_fun,
+  column_order = order(colnames(matt)),
+  row_order = order(rownames(matt))
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
