@@ -1,0 +1,1434 @@
+##########################5.1 Survival analysis in the WES & MSK Cohort
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/06_GMB"
+# 设置工作目录
+setwd(work_dir)
+
+
+#######
+########MSKCC Cohort############
+#######
+clinical <- read.csv("MSKCC_clinical.csv")
+Gene <- read.csv("MSKCC_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+attach(expr)
+gene <- read.csv("01_Gene_Lists.csv")
+
+
+g <- gene[35,1]
+r<-which(Hugo_Symbol==g)
+Gene_r1<-expr[r,]
+Gene_r1<-Gene_r1[!duplicated(Gene_r1$Tumor_Sample_Barcode),]
+#write.csv(Gene_r,file = "06_gene_Choose.csv")
+
+g2 <- gene[36,1]
+r<-which(Hugo_Symbol==g2)
+Gene_r2<-expr[r,]
+Gene_r2<-Gene_r2[!duplicated(Gene_r2$Tumor_Sample_Barcode),]
+
+g3 <- gene[37,1]
+r<-which(Hugo_Symbol==g3)
+Gene_r3<-expr[r,]
+Gene_r3<-Gene_r3[!duplicated(Gene_r3$Tumor_Sample_Barcode),]
+
+g4 <- gene[38,1]
+r<-which(Hugo_Symbol==g4)
+Gene_r4<-expr[r,]
+Gene_r4<-Gene_r4[!duplicated(Gene_r4$Tumor_Sample_Barcode),]
+
+g5 <- gene[39,1]
+r<-which(Hugo_Symbol==g5)
+Gene_r5<-expr[r,]
+Gene_r5<-Gene_r5[!duplicated(Gene_r5$Tumor_Sample_Barcode),]
+
+g6 <- gene[40,1]
+r<-which(Hugo_Symbol==g6)
+Gene_r6<-expr[r,]
+Gene_r6<-Gene_r6[!duplicated(Gene_r6$Tumor_Sample_Barcode),]
+
+
+Gene_r <- rbind(Gene_r1,Gene_r2,Gene_r3,Gene_r4,Gene_r5,Gene_r6)
+
+
+g <- gene[30,1]
+g <- "ERBB2"
+r<-which(Hugo_Symbol==g)
+Gene_r<-expr[r,]
+
+Gene_r<-Gene_r[!duplicated(Gene_r$Tumor_Sample_Barcode),]
+response<-clinical
+k <- Gene_r$Tumor_Sample_Barcode
+row = match(k,response$SAMPLE_ID)
+row = na.omit(row)
+n=length(row)
+
+response_ =response[row,]
+response_w =response[-row,]
+Resp <- rbind(response_,response_w)
+Resp$NTRK3 <- c(rep("XMut",n),rep("Wild",1572-n))
+#write.csv(Resp,file = "01_MSKCC_NTRK3_clin.csv")
+
+library("survival")
+library(survminer)
+fit<- survfit(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","XMut"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","XMut"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+#######
+########WES Cohort############
+#######
+rm(list=ls())
+clinical <- read.csv("Validation_clinical.csv")
+Gene <- read.csv("Validation_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+attach(expr)
+gene <- read.csv("01_Gene_Lists.csv")
+
+
+g <- gene[24,1]
+r<-which(Hugo_Symbol==g)
+Gene_r1<-expr[r,]
+Gene_r1<-Gene_r1[!duplicated(Gene_r1$Tumor_Patient_Barcode),]
+#write.csv(Gene_r,file = "06_gene_Choose.csv")
+
+g2 <- gene[25,1]
+r<-which(Hugo_Symbol==g2)
+Gene_r2<-expr[r,]
+Gene_r2<-Gene_r2[!duplicated(Gene_r2$Tumor_Patient_Barcode),]
+
+g3 <- gene[26,1]
+r<-which(Hugo_Symbol==g3)
+Gene_r3<-expr[r,]
+Gene_r3<-Gene_r3[!duplicated(Gene_r3$Tumor_Patient_Barcode),]
+
+g4 <- gene[39,1]
+r<-which(Hugo_Symbol==g4)
+Gene_r4<-expr[r,]
+Gene_r4<-Gene_r4[!duplicated(Gene_r4$Tumor_Patient_Barcode),]
+
+g5 <- gene[40,1]
+r<-which(Hugo_Symbol==g5)
+Gene_r5<-expr[r,]
+Gene_r5<-Gene_r5[!duplicated(Gene_r5$Tumor_Patient_Barcode),]
+
+g6 <- gene[41,1]
+r<-which(Hugo_Symbol==g6)
+Gene_r6<-expr[r,]
+Gene_r6<-Gene_r6[!duplicated(Gene_r6$Tumor_Patient_Barcode),]
+
+
+Gene_r <- rbind(Gene_r1,Gene_r2,Gene_r3,Gene_r4,Gene_r5,Gene_r6)
+Gene_r <- rbind(Gene_r1,Gene_r2,Gene_r3)
+
+g <- gene[31,1]
+#g <- "ERBB2"
+r<-which(Hugo_Symbol==g)
+Gene_r<-expr[r,]
+
+
+Gene_r<-Gene_r[!duplicated(Gene_r$Tumor_Patient_Barcode),]
+response<-clinical
+k <- Gene_r$Tumor_Patient_Barcode
+row = match(k,response$Sample.ID)
+row = na.omit(row)
+n=length(row)
+
+response_ =response[row,]
+response_w =response[-row,]
+Resp <- rbind(response_,response_w)
+Resp$NTRK3 <- c(rep("Mut",n),rep("Wild",642-n))
+
+library("survival")
+library(survminer)
+fit<- survfit(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut","Wild"),
+           palette="lancet", ylab = "Overall survival" )
+
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut","Wild"),
+                 palette="lancet", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+##########################5.2 TMB VS mutation-based gene set
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/07_GMB_TMB"
+# 设置工作目录
+setwd(work_dir)
+
+clinical <- read.csv("MSKCC_clinical.csv")
+Gene <- read.csv("MSKCC_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+gene <- read.csv("07_Gene_Lists_Select.csv")
+attach(expr)
+
+###挑选特定基因所有突变样本
+D <- data.frame()
+for (i in (1:24)) {
+  g <-gene[i,1]
+  r<-which(expr$Hugo_Symbol==g)
+  Gene_r<-expr[r,]
+  D <- rbind(D,Gene_r)
+}
+
+###每个样本含有特定基因突变数目
+Da <- data.frame()
+for (i in (1:1572)) {
+  samp <-clinical[i,7]
+  r<-which(D$Tumor_Sample_Barcode ==samp)
+  Gene_r<-D[r,]
+  n=length(r)
+  
+  Result <-data.frame(n)
+  Da <- rbind(Da, Result)
+}
+write.csv(Da,file = "08_MSKCC_GMB_number.csv")
+
+
+
+rm(list=ls())
+library("survival")
+library(survminer)
+clinical <- read.csv("08_MSKCC_GMB.csv")
+fit<- survfit(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clinical)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = clinical,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High","Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = clinical,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High","Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clinical)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+### C index
+rm(list=ls())
+library("survival")
+library(survminer)
+clinical <- read.csv("08_MSKCC_GMB.csv")
+attach(clinical)
+cox <- coxph(Surv(OS_MONTHS,Survival_status)~GMB,data = clinical)
+library(survcomp)
+ci4 <- concordance.index(
+  predict(cox), surv.time=OS_MONTHS, surv.event=Survival_status,
+  method="noether"
+)
+ci4$c.index
+ci4$lower
+ci4$upper
+##TMB
+cox <- coxph(Surv(OS_MONTHS,Survival_status)~ TMB_NONSYNONYMOUS,data = clinical)
+ci4 <- concordance.index(
+  predict(cox), surv.time=OS_MONTHS, surv.event=Survival_status,
+  method="noether"
+)
+ci4$c.index
+ci4$lower
+ci4$upper
+
+
+
+###################
+####免疫应答
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB_PD_SD.csv")
+
+table(Resp$Best_treatment_response,Resp$GMB_Bi)
+fisher.test(Resp$Best_treatment_response,Resp$GMB_Bi)
+
+
+###################
+####黑色素瘤
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Melanoma")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###非小细胞肺癌
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Non-Small Cell Lung Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Bladder Cancer
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Bladder Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Colorectal Cancer
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Colorectal Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Head and Neck Cancer
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Head and Neck Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Esophagogastric Cancer
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Esophagogastric Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Renal Cell Carcinoma
+rm(list=ls())
+Resp <- read.csv("08_MSKCC_GMB.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Renal Cell Carcinoma")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Glioma
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Glioma")
+clin <- Resp[r,]
+table(clin$NTRK3)
+
+
+
+
+
+
+
+
+#######
+########WES Cohort############
+#######
+rm(list=ls())
+clinical <- read.csv("Validation_clinical.csv")
+Gene <- read.csv("Validation_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+gene <- read.csv("07_Gene_Lists_Select.csv")
+attach(expr)
+
+###挑选特定基因所有突变样本
+D <- data.frame()
+for (i in (1:24)) {
+  g <-gene[i,1]
+  r<-which(expr$Hugo_Symbol==g)
+  Gene_r<-expr[r,]
+  D <- rbind(D,Gene_r)
+}
+
+###每个样本含有特定基因突变数目
+Da <- data.frame()
+for (i in (1:642)) {
+  samp <-clinical[i,1]
+  r<-which(D$Tumor_Patient_Barcode ==samp)
+  Gene_r<-D[r,]
+  n=length(r)
+  
+  Result <-data.frame(n)
+  Da <- rbind(Da, Result)
+}
+write.csv(Da,file = "08_WES_GMB_number.csv")
+
+
+
+rm(list=ls())
+library("survival")
+library(survminer)
+Resp <- read.csv("08_WES_GMB.csv")
+fit<- survfit(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data = Resp)
+surv_pvalue(fit)$pval.txt
+
+KM <- survfit(Surv(Progression.free.survival,Progression..status) ~ GMB_Bi, data =Resp, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+
+
+#####################PFS
+ggsurvplot(KM, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High","Low"),
+           palette="lancet", ylab = "Progression-free survival" )
+
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High","Low"),
+                 palette="lancet", ylab = "Progression-free survival" )
+res_cox<-coxph(Surv(Progression.free.survival,Progression..status) ~ GMB_Bi, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+#######################OS
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High","Low"),
+           palette="lancet", ylab = "Overall survival" )
+
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High","Low"),
+                 palette="lancet", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+### C index
+rm(list=ls())
+library("survival")
+library(survminer)
+Resp <- read.csv("08_WES_GMB_NA.csv")
+attach(Resp)
+cox <- coxph(Surv(Overall.survival,Survival.status)~GMB,data = Resp)
+library(survcomp)
+ci4 <- concordance.index(
+  predict(cox), surv.time=  Overall.survival, surv.event= Survival.status,
+  method="noether"
+)
+ci4$c.index
+ci4$lower
+ci4$upper
+
+##TMB
+rm(list=ls())
+Resp <- read.csv("08_WES_TMB.csv")
+attach(Resp)
+cox <- coxph(Surv(Overall.survival,Survival.status)~ TMB_NONSYNONYMOUS,data = Resp)
+ci4 <- concordance.index(
+  predict(cox), surv.time=Overall.survival, surv.event=Survival.status,
+  method="noether"
+)
+ci4$c.index
+ci4$lower
+ci4$upper
+
+
+###################
+####免疫应答
+rm(list=ls())
+Resp <- read.csv("08_WES_GMB_DCB.csv")
+
+table(Resp$Clinical_Benefit,Resp$GMB_Bi)
+fisher.test(Resp$Clinical_Benefit,Resp$GMB_Bi)
+
+table(Resp$Best.treatment.response,Resp$GMB_Bi)
+fisher.test(Resp$Best.treatment.response,Resp$GMB_Bi)
+
+
+###################
+####黑色素瘤
+rm(list=ls())
+Resp <- read.csv("08_WES_GMB.csv")
+table(Resp$Cancer_type)
+attach(Resp)
+r<-which(Cancer_type=="Melanoma")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(Progression.free.survival,Progression..status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+########################PFS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+########################OS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+####非小细胞肺癌
+rm(list=ls())
+Resp <- read.csv("08_WES_GMB.csv")
+table(Resp$Cancer_type)
+attach(Resp)
+r<-which(Cancer_type=="Non-small cell lung cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(Progression.free.survival,Progression..status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+########################PFS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+########################OS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+###################
+####其它癌
+rm(list=ls())
+Resp <- read.csv("08_WES_GMB.csv")
+table(Resp$Cancer_type_Thr)
+attach(Resp)
+r<-which(Cancer_type_Thr=="Other")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(Progression.free.survival,Progression..status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+
+########################PFS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+########################OS
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High", "Low"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High", "Low"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ GMB_Bi, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/07_GMB_TMB"
+# 设置工作目录
+setwd(work_dir)
+
+####TMB与GMB
+dataxx <-read.csv("09_GMB_TMB.csv",row.names = 1,check.names=FALSE)
+datax <- as.matrix(dataxx)
+barplot(datax,beside = TRUE,horiz =T)
+barplot(datax,beside = TRUE,angle = 15+10*1:5, density = 10,col = rainbow(2),horiz =T)
+barplot(datax,beside = TRUE,angle = 15+10*1:5, density = 10)
+
+
+####GMB Response
+# bar_plot 2021/01/19
+# 导入所需的包
+library(ggplot2)
+
+library(ggsignif)
+library(tidyverse)
+library(dplyr)
+library(ggpubr)
+library(devEMF)
+
+# 导入并处理数据,需要两张表，一个是原始汇总表格，另外一些是每一个测量数据的均值和标准差
+clinical <- read.csv("11_WES_DCB.csv")#row.names = 1,check.names=FALSE)
+
+
+# SOD
+SOD_mean <- clinical %>% 
+  dplyr::group_by(Group) %>% 
+  dplyr::summarize(
+    count=n(),
+    mean = mean(Makeup),
+    sd = sd(Makeup)
+  )
+
+
+#####################################################################
+plot_data1 <- SOD_mean
+p4 <- ggplot()+ 
+  geom_bar(data=plot_data1,mapping=aes(x=Group,y=mean,fill=Group), # fill填充
+           position="dodge", # 柱状图格式
+           stat="identity", # 数据格式
+           width = 0.7)+  # 柱状图尺寸
+  scale_fill_manual(values = c("#4E4E56", "#DA635D"))+ # 柱状图颜色
+  scale_y_continuous(limits =c(0, 100) ,expand = c(0,0))+ # y轴的范围
+  theme_classic(  # 主题设置，这个是无线条主题
+    base_line_size = 1 # 坐标轴的粗细
+  )+
+  labs(title="",x="",y="DCB(%)")+ # 添加标题，x轴，y轴内容
+  theme(plot.title = element_text(size = 20,
+                                  colour = "red",
+                                  hjust = 0.5),
+        axis.title.y = element_text(size = 15, 
+                                    # family = "myFont", 
+                                    color = "black",
+                                    face = "bold", 
+                                    vjust = 1.9, 
+                                    hjust = 0.5, 
+                                    angle = 90),
+        legend.title = element_text(color="black", # 修改图例的标题
+                                    size=15, 
+                                    face="bold"),
+        legend.text = element_text(color="black", # 设置图例标签文字
+                                   size = 10, 
+                                   face = "bold"),
+        axis.text.x = element_text(size = 13,  # 修改X轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0), #角度
+        axis.text.y = element_text(size = 13,  # 修改y轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0) #角度
+  ) 
+p4
+
+
+##########################5.3 Validation in the Rizvi Cohort
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/08_Rizvi_validation_GMB"
+# 设置工作目录
+setwd(work_dir)
+
+clinical <- read.csv("Rizvi_2015_clinical.csv")
+Gene <- read.csv("Rizvi_2015_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+gene <- read.csv("07_Gene_Lists_Select.csv")
+attach(expr)
+
+###挑选特定基因所有突变样本
+D <- data.frame()
+for (i in (1:24)) {
+  g <-gene[i,1]
+  r<-which(expr$Hugo_Symbol==g)
+  Gene_r<-expr[r,]
+  D <- rbind(D,Gene_r)
+}
+
+###每个样本含有特定基因突变数目
+Da <- data.frame()
+for (i in (1:35)) {
+  samp <-clinical[i,12]
+  r<-which(D$Tumor_Sample_Barcode ==samp)
+  Gene_r<-D[r,]
+  n=length(r)
+  
+  Result <-data.frame(n)
+  Da <- rbind(Da, Result)
+}
+write.csv(Da,file = "08_Rizvi_2015_GMB_number.csv")
+
+
+
+rm(list=ls())
+library("survival")
+library(survminer)
+clinical <- read.csv("08_Rizvi_2015_clinical_GMB.csv")
+fit<- survfit(Surv(PFS_MONTHS, Status) ~ GMB_Bi, data = clinical)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = clinical,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High","Low"),
+           palette="lancet", ylab = "Progress-free survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = clinical,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High","Low"),
+                 palette="jto", ylab = "Progress-free survival" )
+res_cox<-coxph(Surv(PFS_MONTHS, Status) ~ GMB_Bi, data = clinical)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+### C index
+rm(list=ls())
+library("survival")
+library(survminer)
+clinical <- read.csv("08_Rizvi_2015_clinical_GMB.csv")
+attach(clinical)
+cox <- coxph(Surv(PFS_MONTHS, Status)~GMB,data = clinical)
+cox <- coxph(Surv(PFS_MONTHS, Status)~TMB_NONSYNONYMOUS,data = clinical)
+#if (!require("BiocManager", quietly = TRUE))
+#  install.packages("BiocManager")
+#BiocManager::install("survcomp")
+
+library(survcomp)
+ci4 <- concordance.index(
+  predict(cox), surv.time=PFS_MONTHS, surv.event=Status,
+  method="noether"
+)
+ci4$c.index
+ci4$lower
+ci4$upper
+
+
+### AUC
+rm(list=ls())
+library(pROC)
+clinical <- read.csv("08_Rizvi_2015_clinical_GMB_PDSD.csv")
+clinical <- read.csv("08_Rizvi_2015_clinical_GMB_DCB.csv")
+
+## roc的计算，可以一次性批量计算a、b、c三组数据
+res<-roc(Status ~ GMB + TMB_NONSYNONYMOUS+ AGE+NEOANTIGEN_BURDEN+PDL1,data=clinical,aur=TRUE,
+         ci=TRUE, # 显示95%CI
+         # percent=TRUE, ##是否需要以百分比显示
+         levels=c('0','1'),direction=">" #设置分组方向
+)
+
+res<-roc(CLINICAL_BENEFIT ~ GMB + TMB_NONSYNONYMOUS+ AGE+NEOANTIGEN_BURDEN+PDL1,data=clinical,aur=TRUE,
+         ci=TRUE, # 显示95%CI
+         # percent=TRUE, ##是否需要以百分比显示
+         levels=c('DCB','NDB'),direction=">" #设置分组方向
+)
+
+res
+ ggroc(res, legacy.axes = TRUE)+
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="darkgrey", linetype=4)+
+  theme_bw()+ggtitle('ROC')+ggsci::scale_color_lancet()+
+  annotate("text",x=0.75,y=0.125,label=paste("GMB-AUC = ", round(res$GMB$auc,3)))+
+  annotate("text",x=0.75,y=0.25,label=paste("TMB-AUC = ", round(res$TMB_NONSYNONYMOUS$auc,3)))+
+  annotate("text",x=0.75,y=0.375,label=paste("PDL1-AUC = ", round(res$PDL1$auc,3)))+
+  annotate("text",x=0.75,y=0.50,label=paste("Age-AUC = ", round(res$AGE$auc,3)))
+
+####Cindex
+ rm(list=ls())
+ dataxx <-read.csv("11_GMB_TMB_Cindex.csv",row.names = 1,check.names=FALSE)
+ datax <- as.matrix(dataxx)
+ barplot(datax,beside = TRUE,horiz =T)
+ barplot(datax,beside = TRUE,angle = 15+10*1:5, density = 10,col = rainbow(2),horiz =T)
+ barplot(datax,beside = TRUE,angle = 15+10*1:5, density = 10) 
+ 
+ 
+###################
+####免疫应答#######
+rm(list=ls())
+Resp <- read.csv("08_Rizvi_2015_clinical_GMB_DCB.csv")
+#单个卡方检验 DCB
+table(Resp$DURABLE_CLINICAL_BENEFIT,Resp$GMB_Bi)
+f=fisher.test(Resp$DURABLE_CLINICAL_BENEFIT,Resp$GMB_Bi)
+f
+
+# 导入所需的包
+library(ggplot2)
+library(ggsignif)
+library(tidyverse)
+library(dplyr)
+library(ggpubr)
+library(devEMF)
+
+# 导入并处理数据,需要两张表，一个是原始汇总表格，另外一些是每一个测量数据的均值和标准差
+clinical <- read.csv("08_Rizvi_2015_DCB.csv")#row.names = 1,check.names=FALSE)
+
+
+# SOD
+SOD_mean <- clinical %>% 
+  dplyr::group_by(Group) %>% 
+  dplyr::summarize(
+    count=n(),
+    mean = mean(Makeup),
+    sd = sd(Makeup)
+  )
+
+
+#####################################################################
+plot_data1 <- SOD_mean
+p4 <- ggplot()+ 
+  geom_bar(data=plot_data1,mapping=aes(x=Group,y=mean,fill=Group), # fill填充
+           position="dodge", # 柱状图格式
+           stat="identity", # 数据格式
+           width = 0.7)+  # 柱状图尺寸
+  scale_fill_manual(values = c("#4E4E56", "#DA635D"))+ # 柱状图颜色
+  scale_y_continuous(limits =c(0, 100) ,expand = c(0,0))+ # y轴的范围
+  theme_classic(  # 主题设置，这个是无线条主题
+    base_line_size = 1 # 坐标轴的粗细
+  )+
+  labs(title="",x="",y="DCB(%)")+ # 添加标题，x轴，y轴内容
+  theme(plot.title = element_text(size = 20,
+                                  colour = "red",
+                                  hjust = 0.5),
+        axis.title.y = element_text(size = 15, 
+                                    # family = "myFont", 
+                                    color = "black",
+                                    face = "bold", 
+                                    vjust = 1.9, 
+                                    hjust = 0.5, 
+                                    angle = 90),
+        legend.title = element_text(color="black", # 修改图例的标题
+                                    size=15, 
+                                    face="bold"),
+        legend.text = element_text(color="black", # 设置图例标签文字
+                                   size = 10, 
+                                   face = "bold"),
+        axis.text.x = element_text(size = 13,  # 修改X轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0), #角度
+        axis.text.y = element_text(size = 13,  # 修改y轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0) #角度
+  ) 
+p4
+
+
+#######
+########Rizvi_2018 Cohort############
+#######
+rm(list=ls())
+clinical <- read.csv("Rizvi_2018_clinical.csv")
+Gene <- read.csv("Rizvi_2018_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+gene <- read.csv("07_Gene_Lists_Select.csv")
+attach(expr)
+
+###挑选特定基因所有突变样本
+D <- data.frame()
+for (i in (1:24)) {
+  g <-gene[i,1]
+  r<-which(expr$Hugo_Symbol==g)
+  Gene_r<-expr[r,]
+  D <- rbind(D,Gene_r)
+}
+
+###每个样本含有特定基因突变数目
+Da <- data.frame()
+for (i in (1:240)) {
+  samp <-clinical[i,2]
+  r<-which(D$Tumor_Sample_Barcode ==samp)
+  Gene_r<-D[r,]
+  n=length(r)
+  
+  Result <-data.frame(n)
+  Da <- rbind(Da, Result)
+}
+write.csv(Da,file = "09_Rizvi_2018_GMB_number.csv")
+
+
+
+rm(list=ls())
+library("survival")
+library(survminer)
+Resp <- read.csv("09_Rizvi_2018_clinical_GMB.csv")
+fit<- survfit(Surv(PFS_MONTHS,STATUS) ~ GMB_Bi, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("High","Low"),
+           palette="lancet", ylab = "Progress-free survival" )
+
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("High","Low"),
+                 palette="lancet", ylab = "Progress-free survival" )
+res_cox<-coxph(Surv(PFS_MONTHS,STATUS) ~ GMB_Bi, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+### AUC
+rm(list=ls())
+library(pROC)
+clinical <- read.csv("09_Rizvi_2018_clinical_GMB.csv")
+
+## roc的计算，可以一次性批量计算a、b、c三组数据
+res<-roc(STATUS ~ GMB + TMB_NONSYNONYMOUS+ PDL1_SCORE+ AGE+FGA,data=clinical,aur=TRUE,#+ MUTATION_RATE
+         ci=TRUE, # 显示95%CI
+         # percent=TRUE, ##是否需要以百分比显示
+         levels=c('0','1'),direction=">" #设置分组方向
+)
+res
+ggroc(res, legacy.axes = TRUE)+
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="darkgrey", linetype=4)+
+  theme_bw()+ggtitle('ROC')+ggsci::scale_color_lancet()+
+  annotate("text",x=0.75,y=0.500,label=paste("GMB-AUC = ", round(res$GMB$auc,3)))+
+  annotate("text",x=0.75,y=0.375,label=paste("TMB-AUC = ", round(res$TMB_NONSYNONYMOUS$auc,3)))+
+  annotate("text",x=0.75,y=0.25,label=paste("PDL1-AUC = ", round(res$PDL1_SCORE$auc,3)))+
+  annotate("text",x=0.75,y=0.125,label=paste("Age-AUC = ", round(res$AGE$auc,3)))+
+  annotate("text",x=0.75,y=0.01,label=paste("FGA-AUC = ", round(res$FGA$auc,3)))
+
+
+
+rm(list=ls())
+clinical <- read.csv("09_Rizvi_2018_clinical_GMB_DCB.csv")
+## roc的计算，可以一次性批量计算a、b、c三组数据
+res<-roc(DURABLE_CLINICAL_BENEFIT ~ GMB + TMB_NONSYNONYMOUS+ PDL1_SCORE+ AGE+FGA,data=clinical,aur=TRUE,
+         ci=TRUE, # 显示95%CI
+         # percent=TRUE, ##是否需要以百分比显示
+         levels=c('YES','NO'),direction=">" #设置分组方向
+)
+res
+ggroc(res, legacy.axes = TRUE)+
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="darkgrey", linetype=4)+
+  theme_bw()+ggtitle('ROC')+ggsci::scale_color_lancet()+
+  annotate("text",x=0.75,y=0.500,label=paste("GMB-AUC = ", round(res$GMB$auc,3)))+
+  annotate("text",x=0.75,y=0.375,label=paste("TMB-AUC = ", round(res$TMB_NONSYNONYMOUS$auc,3)))+
+  annotate("text",x=0.75,y=0.25,label=paste("PDL1-AUC = ", round(res$PDL1_SCORE$auc,3)))+
+  annotate("text",x=0.75,y=0.125,label=paste("Age-AUC = ", round(res$AGE$auc,3)))
+
+
+###################
+####免疫应答
+rm(list=ls())
+Resp <- read.csv("09_Rizvi_2018_clinical_GMB_DCB.csv")
+#单个卡方检验 DCB
+table(Resp$DURABLE_CLINICAL_BENEFIT,Resp$GMB_Bi)
+f=fisher.test(Resp$DURABLE_CLINICAL_BENEFIT,Resp$GMB_Bi)
+f
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
