@@ -1,0 +1,570 @@
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/02_validation/030_validation"
+# 设置工作目录
+setwd(work_dir)
+
+##去除Allen重复部分
+clinical <- read.csv("Validation_clinical.csv")
+clin <- read.csv("Miao_Mix_Clin.csv")
+
+k <- clin$PATIENT_ID
+row = match(k,clinical$Sample.ID)
+row = na.omit(row)
+clinical_ =clinical[row,]
+clinical_W =clinical[-row,]
+write.csv(clinical_W,file = "01_validation_clinical.csv")
+
+
+
+rm(list=ls())
+clinical <- read.csv("01_validation_clinical.csv")
+Gene <- read.csv("Validation_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+attach(expr)
+g <-"NTRK3"
+r<-which(Hugo_Symbol==g)
+Gene_r<-expr[r,]
+Gene_r<-Gene_r[!duplicated(Gene_r$Tumor_Patient_Barcode),]
+
+response<-clinical
+k <- Gene_r$Tumor_Patient_Barcode
+row = match(k,response$Sample.ID)
+row = na.omit(row)
+n=length(row)
+
+response_ =response[row,]
+response_w =response[-row,]
+Resp <- rbind(response_,response_w)
+Resp$NTRK3 <- c(rep("Mut",n),rep("Wild",642-n))
+write.csv(Resp,file = "01_validation_NTRK3_clin.csv")
+
+library("survival")
+library(survminer)
+fit<- survfit(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","Mut"),
+           palette="lancet", ylab = "Overall survival" )
+
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","Mut"),
+                 palette="lancet", ylab = "Overall survival" )
+res_cox<-coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+
+###PFS
+fit<- survfit(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","Mut"),
+           palette="lancet", ylab = "Progression-free survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","Mut"),
+                 palette="lancet", ylab = "Progression-free survival")
+res_cox<-coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+####免疫应答 ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+#单个卡方检验
+table(Resp$Response,Resp$NTRK3)
+f=fisher.test(Resp$Response,Resp$NTRK3)
+f
+
+####免疫应答 DCB
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+#单个卡方检验
+table(Resp$Clinical_Benefit,Resp$NTRK3)
+f=fisher.test(Resp$Clinical_Benefit,Resp$NTRK3)
+f
+
+
+
+###PFS/OS 各肿瘤
+###################
+####黑色素瘤
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+attach(Resp)
+r<-which(Cancer_type=="Melanoma")
+clin <- Resp[r,]
+
+attach(clin)
+#OS
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+#PFS
+KM<- survfit(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = clin)
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","Mut"),
+           palette="lancet", ylab = "Overall survival")#"Progression-free survival"
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","Mut"),
+                 palette="lancet", ylab = "Progression-free survival")#"Overall survival"
+res_cox<-coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###非小细胞肺癌
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+attach(Resp)
+table(Resp$Cancer_type)
+r<-which(Cancer_type=="Non-small cell lung cancer")
+clin <- Resp[r,]
+
+#OS
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+#PFS
+KM<- survfit(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = clin)
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","Mut"),
+           palette="lancet", ylab = "Overall survival")#"Progression-free survival"
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","Mut"),
+                 palette="lancet", ylab = "Progression-free survival")#"Overall survival"
+res_cox<-coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Other tumor
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+attach(Resp)
+table(Resp$Cancer_type)
+r<-which(Cancer_type=="Melanoma")
+Other_r<- Resp[-r,]
+
+#OS
+KM <- survfit(Surv(Overall.survival,Survival.status) ~ NTRK3, data =Other_r, type = 'kaplan-meier', conf.type = 'log')
+surv_pvalue(KM)$pval.txt
+#PFS
+KM<- survfit(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Other_r)
+surv_pvalue(KM)$pval.txt
+
+ggsurvplot(KM, data = Other_r,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Wild","Mut"),
+           palette="lancet", ylab = "Overall survival")#"Progression-free survival"
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = Other_r,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Wild","Mut"),
+                 palette="lancet", ylab = "Overall survival")#"Overall survival"
+res_cox<-coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Other_r)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+###uni/multi 亚组分析 #####
+#######################
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+
+table(Resp$Age_Bi)
+g <-"<60"
+g <-"\xa1\xdd 60"
+
+r<-which(Resp$Age_Bi ==g)
+Age_r<- Resp[r,]
+
+##  OS
+table(Age_r$NTRK3)
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Age_r)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Age_r)
+summary(res.cox)
+
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+table(Resp$Age_Bi)
+g <-"<60"
+g <-"\xa1\xdd60"
+
+r<-which(Resp$Age_Bi ==g)
+Age_r<-Resp[r,]
+
+table(Age_r$Response,Age_r$NTRK3)
+fisher.test(Age_r$Response,Age_r$NTRK3)
+#DCB
+table(Age_r$Clinical_Benefit,Age_r$NTRK3)
+fisher.test(Age_r$Clinical_Benefit,Age_r$NTRK3)
+
+######SEX
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+
+table(Resp$Gender)
+g <-"Female"
+g <-"Male"
+
+r<-which(Resp$Gender ==g)
+Gender_r<- Resp[r,]
+
+##  OS
+table(Gender_r$NTRK3)
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Gender_r)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Gender_r)
+summary(res.cox)
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+table(Resp$Gender)
+g <-"Female"
+g <-"Male"
+
+r<-which(Resp$Gender ==g)
+Gender_r<-Resp[r,]
+
+table(Gender_r$Response,Gender_r$NTRK3)
+fisher.test(Gender_r$Response,Gender_r$NTRK3)
+#DCB
+table(Gender_r$Clinical_Benefit,Gender_r$NTRK3)
+fisher.test(Gender_r$Clinical_Benefit,Gender_r$NTRK3)
+
+
+######Cancer type
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+
+table(Resp$Cancer_type)
+g <-"Non-small cell lung cancer"
+g <-"Melanoma"
+
+r<-which(Resp$Cancer_type ==g)
+NSCLC_r<- Resp[r,]
+
+REST_r<- Resp[-r,]
+g <-"Melanoma"
+r<-which(REST_r$Cancer_type ==g)
+Other_r<- REST_r[-r,]
+
+##  OS
+table(Other_r$NTRK3)
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Other_r)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Other_r)
+summary(res.cox)
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+table(Resp$Cancer_type)
+g <-"Non-small cell lung cancer"
+g <-"Melanoma"
+
+r<-which(Resp$Cancer_type ==g)
+NSCLC_r<- Resp[r,]
+
+REST_r<- Resp[-r,]
+g <-"Melanoma"
+r<-which(REST_r$Cancer_type ==g)
+Other_r<- REST_r[-r,]
+
+table(NSCLC_r$Response,NSCLC_r$NTRK3)
+fisher.test(NSCLC_r$Response,NSCLC_r$NTRK3)
+
+table(Other_r$Response,Other_r$NTRK3)
+fisher.test(Other_r$Response,Other_r$NTRK3)
+#DCB
+fisher.test(NSCLC_r$Clinical_Benefit,NSCLC_r$NTRK3)
+#DCB
+fisher.test(Other_r$Clinical_Benefit,Other_r$NTRK3)
+
+
+######Drug type
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+
+table(Resp$Drug_type)
+g <-"Anti-PD-1/PD-L1"
+g <-"Anti-CTLA-4"
+
+r<-which(Resp$Drug_type ==g)
+PD1_r<- Resp[r,]
+
+REST_r<- Resp[-r,]
+g <-"Anti-CTLA-4"
+r<-which(REST_r$Drug_type ==g)
+Other_r<- REST_r[-r,]
+
+##  OS
+table(Other_r$NTRK3)
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = Other_r)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = Other_r)
+summary(res.cox)
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+table(Resp$Drug_type)
+g <-"Anti-PD-1/PD-L1"
+g <-"Anti-CTLA-4"
+
+r<-which(Resp$Drug_type ==g)
+NSCLC_r<- Resp[r,]
+
+REST_r<- Resp[-r,]
+g <-"Anti-CTLA-4"
+r<-which(REST_r$Drug_type ==g)
+Other_r<- REST_r[-r,]
+
+table(NSCLC_r$Response,NSCLC_r$NTRK3)
+fisher.test(NSCLC_r$Response,NSCLC_r$NTRK3)
+
+table(Other_r$Response,Other_r$NTRK3)
+fisher.test(Other_r$Response,Other_r$NTRK3)
+#DCB
+fisher.test(NSCLC_r$Clinical_Benefit,NSCLC_r$NTRK3)
+#DCB
+fisher.test(Other_r$Clinical_Benefit,Other_r$NTRK3)
+
+
+######TMB
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+
+table(Resp$TMB_Bi)
+g <-"TMB_High"
+g <-"TMB_Low"
+
+r<-which(Resp$TMB_Bi ==g)
+TMB_r<- Resp[r,]
+
+##  OS
+table(TMB_r$NTRK3)
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3, data = TMB_r)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3, data = TMB_r)
+summary(res.cox)
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_TMB_Response.csv")
+table(Resp$TMB_Bi)
+g <-"TMB_High"
+g <-"TMB_Low"
+
+r<-which(Resp$TMB_Bi ==g)
+Gender_r<-Resp[r,]
+
+table(Gender_r$Best.treatment.response,Gender_r$NTRK3)
+fisher.test(Gender_r$Best.treatment.response,Gender_r$NTRK3)
+
+
+####Overall uni/Multi
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+table(Resp$Cancer_type_Th)
+
+##  OS
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ Cancer_type_Th, data = Resp)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ Cancer_type_Th, data = Resp)
+summary(res.cox)
+
+## ORR
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response.csv")
+table(Resp$NTRK3)
+
+table(Resp$Response,Resp$NTRK3)
+fisher.test(Resp$Response,Resp$NTRK3)
+#DCB
+fisher.test(Resp$Clinical_Benefit,Resp$NTRK3)
+
+
+###Multi###
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin.csv")
+table(Resp$NTRK3)
+
+##  OS
+library(survminer)
+library("survival")
+res.cox <- coxph(Surv(Overall.survival,Survival.status) ~ NTRK3+Age_Bi, data = Resp)
+summary(res.cox)
+
+## PFS
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3+Cancer_type_Th, data = Resp)
+summary(res.cox)
+
+res.cox <- coxph(Surv(Progression.free.survival,Progression..status) ~ NTRK3+TMB_Bi, data = Resp)
+summary(res.cox)
+table(Resp$Drug_type)
+
+
+
+####Response uni/Multi Logistic
+rm(list=ls())
+Resp <- read.csv("01_validation_NTRK3_clin_Response_Age_NA.csv")
+table(Resp$Response)
+
+Resp$Gender<- factor(Resp$Gender)
+#Resp$SEX<-relevel(Resp$SEX,"Male")
+
+Resp$Drug_type<-factor(Resp$Drug_type)
+Resp$Cancer_type<-factor(Resp$Cancer_type)
+Resp$Response<- factor(Resp$Response)
+Resp$NTRK3<- factor(Resp$NTRK3)
+#Resp$NTRK3<-relevel(Resp$NTRK3,"Wild")
+Resp$Age_Bi<- factor(Resp$Age_Bi)
+
+model1 <- glm(Response ~ Gender, data= Resp, family = binomial())
+summary(model1)
+exp(coef(model1)) #计算OR
+exp(confint(model1)) #计算OR的95%CI 
+
+model2 <- glm(Response ~ Age, data= Resp, family = binomial())
+summary(model2)
+
+model3 <- glm(Response ~ Cancer_type, data= Resp, family = binomial())
+summary(model3)
+exp(coef(model3)) #计算OR
+exp(confint(model3)) #计算OR的95%CI 
+
+model4 <- glm(Response ~ Drug_type, data= Resp, family = binomial())
+summary(model4)
+exp(coef(model4)) #计算OR
+exp(confint(model4)) #计算OR的95%CI 
+
+model5 <- glm(Response ~ NTRK3, data= Resp, family = binomial())
+summary(model5)
+exp(coef(model5)) #计算OR
+exp(confint(model5)) #计算OR的95%CI 
+
+model6 <- glm(Response ~ Age_Bi, data= Resp, family = binomial())
+summary(model6)
+exp(coef(model6)) #计算OR
+exp(confint(model6)) #计算OR的95%CI 
+#model7 <- glm(Response ~ TMB_NONSYNONYMOUS, data= Resp, family = binomial())
+#summary(model7)
+
+###多因素logistic回归
+model8 <- glm(Response ~ NTRK3+Drug_type+Age_Bi, data= Resp, family = binomial())
+summary(model8)
+exp(coef(model8)) #计算OR
+exp(confint(model8)) #计算OR的95%CI 
