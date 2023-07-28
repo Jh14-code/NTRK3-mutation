@@ -1,0 +1,443 @@
+#################################3.1 
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/Thorsson_extrinsic"
+# 设置工作目录
+setwd(work_dir)
+
+
+Thorsson_NTRK3 <-read.csv("03_Thorsson_NTRK3.csv",row.names = 1,check.names=FALSE)
+##小提琴图+箱线图
+library(ggplot2)
+library(RColorBrewer)
+
+#使用ggplot2包生成箱线图
+compaired <- list(c("Wild", "XMut")) 
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$Leukocyte_Fraction),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(4,64)]
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$TIL_Regional_Fraction),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(7,64)]
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$Lymphocytes),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(58,64)]
+
+
+P1 <- ggplot(Thorsson_Mut,aes(x=NTRK3,y=Lymphocytes,fill=NTRK3))+ #”fill=“设置填充颜色
+  geom_violin(trim=FALSE,color="white")+ #由于自带的箱形图没有胡须末端没有短横线，使用误差条的方式补上
+  geom_boxplot(width=0.2,position=position_dodge(0.9),fill="white")+
+  scale_fill_manual(values = c("#E69F00", "#0072B2"))+  #设置填充的颜色"#F0E442"
+  scale_color_manual(values=c("black","black"))+ #设置散点图的圆圈的颜色为黑色"black"
+  ggtitle(" ")+ #设置总的标题
+  theme_bw()+ #背景变为白色
+  theme(legend.position="none", #不需要图例
+        axis.text.x=element_text(colour="black",family="Times",size=14), #设置x轴刻度标签的字体属性
+        axis.text.y=element_text(family="Times",size=14,face="plain"), #设置x轴刻度标签的字体属性
+        axis.title.y=element_text(family="Times",size = 14,face="plain"), #设置y轴的标题的字体属性
+        axis.title.x=element_text(family="Times",size = 14,face="plain"), #设置x轴的标题的字体属性
+        plot.title = element_text(family="Times",size=15,face="bold",hjust = 0.5), #设置总标题的字体属性
+        panel.grid.major = element_blank(), #不显示网格线
+        panel.grid.minor = element_blank())+
+  ylab("Lymphocytes")+xlab(" ") #设置x轴和y轴的标题
+P1+stat_compare_means(comparisons = compaired, method = "wilcox.test",label = "p.value")#,label.y = 0.5) 
+
+
+
+#################################3.2 MCP
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/MCP"
+# 设置工作目录
+setwd(work_dir)
+
+TCGA <-read.csv("01_TCGA_NTRK3_clin.csv")
+TCGA_Mut <-TCGA[!duplicated(TCGA$PATIENT_ID),]
+
+Immune <-read.csv("08_TCGA_MCP.csv",row.names = 1,check.names=FALSE)
+
+k <- rownames(Immune)
+row = match(k,TCGA_Mut$PATIENT_ID)
+row = na.omit(row)
+clin =TCGA_Mut[row,]
+
+k <- clin$PATIENT_ID
+row = match(k,rownames(Immune))
+row = na.omit(row)
+Immune_NTRK3 =Immune[row,]
+
+Immune_NTRK3$NTRK3 <- clin$NTRK3
+write.csv(Immune_NTRK3,file = "09_MCP_NTRK3.csv")
+
+
+###boxplot
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("09_MCP_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+count_clin_merge <- Thorsson_NTRK3[order(Thorsson_NTRK3$NTRK3),]
+table(count_clin_merge$NTRK3)
+df<-count_clin_merge[,1:10]
+df<-t(df)
+df<-as.data.frame(df)
+df$X <-rownames(df)
+
+df <- reshape2::melt(df, id.vars = c("X"))
+df$NTRK3 <-factor(c(rep("Wild",88360),rep("XMut",3480)))
+
+###boxplot
+############
+library(ggplot2)
+library(ggpubr)
+
+df$value <- log10(df$value)
+compare_means(value ~ NTRK3, data = df, group.by = "X")
+attach(df)
+p <- ggboxplot(df, x = "X", y = "value",
+               fill = "NTRK3", palette ="jco",# c("#00AFBB", "#E7B800")
+               bxp.errorbar = T,bxp.errorbar.width = 0.4,outlier.shape = NA) # palette可以按照期刊选择相应的配色，如"npg"等;palette = "jco", add = "jitter"
+p<-p + stat_compare_means(aes(group =NTRK3), label = "p.signif",
+                          hide.ns = TRUE)+#label.y=0.6
+  labs(x=NULL,y = "Immune Infiltration Score",par(las="2"))+
+  rotate_x_text(45)
+# label = "p.signif"p.format标识用星号或者''ns''等字符来表示显著性结果
+ggpar(p,legend = "right")
+
+
+
+#################################3.2 CIBERCORT
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/CIBERCORT_immunecell"
+# 设置工作目录
+setwd(work_dir)
+
+
+Thorsson_NTRK3 <-read.csv("CIBERCORT.csv",row.names = 1,check.names=FALSE)
+rownames(Thorsson_NTRK3) <- sapply(strsplit(rownames(Thorsson_NTRK3),"[.]"),function(x) paste0(x[1:3],collapse="-"))
+Mut <-read.csv("01_TCGA_NTRK3_clin.csv")
+
+k <- rownames(Thorsson_NTRK3)
+row = match(k,Mut$PATIENT_ID)
+row = na.omit(row)
+exp =Mut[row,]
+Thorsson_NTRK3$NTRK3 <- exp$NTRK3
+write.csv(Thorsson_NTRK3,file = "02_Cibersort_NTRK3.csv")
+
+
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("02_Cibersort_NTRK3.csv",row.names = 1,check.names=FALSE)
+##小提琴图+箱线图
+library(ggpubr)
+library(ggplot2)
+library(RColorBrewer)
+
+#使用ggplot2包生成箱线图
+compaired <- list(c("Wild", "XMut")) 
+
+Thorsson <- Thorsson_NTRK3[!is.na(Thorsson_NTRK3$`T cells CD8`),]
+table(Thorsson$NTRK3)
+Thorsson_Mut <- Thorsson[,c(4,26)]
+# Basic violin plot#
+######################
+p <- ggplot(Thorsson_Mut, aes(x=NTRK3, y=`NK cells activated`,fill=NTRK3)) + 
+  geom_violin(position=position_dodge(0.6))+ 
+  theme_classic()+
+  theme(legend.position="top")+
+  labs(x=NULL,y = "NK cells activated")+
+  stat_compare_means(label = "p.format",hide.ns = TRUE)#p.format label.y
+p
+p+stat_summary(fun.data=mean_sdl, fun.args = list(mult=1), 
+               geom="pointrange", color="white",position=position_dodge(0.6))
+
+
+
+
+#################################3.3 immune infiltration score
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/Immune_Infiltration_Score"
+# 设置工作目录
+setwd(work_dir)
+
+
+Thorsson_NTRK3 <-read.csv("Gene_Expression_Score.csv",row.names = 1,check.names=FALSE)
+Thorsson <- as.data.frame(t(Thorsson_NTRK3)) 
+names(Thorsson) <- sapply(strsplit(names(Thorsson),"[.]"),function(x) paste0(x[1:3],collapse="-"))
+Thorsson_ <- Thorsson[,!duplicated(colnames(Thorsson))]
+Thorsson_NTRK3 <- as.data.frame(t(Thorsson_))
+
+Mut <-read.csv("01_TCGA_NTRK3_clin.csv")
+
+k <- rownames(Thorsson_NTRK3)
+row = match(k,Mut$PATIENT_ID)
+row = na.omit(row)
+exp =Mut[row,]
+
+k <- exp$PATIENT_ID
+row = match(k,rownames(Thorsson_NTRK3))
+row = na.omit(row)
+Danaher_NTRK3 =Thorsson_NTRK3[row,]
+Danaher_NTRK3$NTRK3 <- exp$NTRK3
+write.csv(Danaher_NTRK3,file = "02_Danaher_NTRK3.csv")
+
+
+
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("02_Danaher_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+count_clin_merge <- Thorsson_NTRK3[order(Thorsson_NTRK3$NTRK3),]
+table(count_clin_merge$NTRK3)
+df<-count_clin_merge[,1:14]
+df<-t(df)
+df<-as.data.frame(df)
+df$X <-rownames(df)
+
+df <- reshape2::melt(df, id.vars = c("X"))
+df$NTRK3 <-factor(c(rep("Wild",115136),rep("XMut",3626)))
+
+###boxplot
+############
+library(ggplot2)
+library(ggpubr)
+
+compare_means(value ~ NTRK3, data = df, group.by = "X")
+attach(df)
+p <- ggboxplot(df, x = "X", y = "value",
+               fill = "NTRK3", palette = c("#00AFBB", "#E7B800"),
+               bxp.errorbar = T,bxp.errorbar.width = 0.4,outlier.shape = NA) # palette可以按照期刊选择相应的配色，如"npg"等;palette = "jco", add = "jitter"
+p<-p + stat_compare_means(aes(group =NTRK3), label = "p.signif",
+                          hide.ns = TRUE)+#label.y=0.6
+  labs(x=NULL,y = "Immune Infiltration Score",par(las="2"))+
+  rotate_x_text(45)
+# label = "p.signif"p.format标识用星号或者''ns''等字符来表示显著性结果
+ggpar(p,legend = "right")
+
+
+
+
+#################################3.4 immune signature
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/Immune_Signature"
+# 设置工作目录
+setwd(work_dir)
+
+TCGA <-read.csv("01_TCGA_NTRK3_clin.csv")
+TCGA_Mut <-TCGA[!duplicated(TCGA$PATIENT_ID),]
+
+Immune <-read.csv("07_TCGA_tumor_immune_signature_enrich_T.csv",row.names = 1,check.names=FALSE)
+
+k <- rownames(Immune)
+row = match(k,TCGA_Mut$PATIENT_ID)
+row = na.omit(row)
+clin =TCGA_Mut[row,]
+
+k <- clin$PATIENT_ID
+row = match(k,rownames(Immune))
+row = na.omit(row)
+Immune_NTRK3 =Immune[row,]
+
+Immune_NTRK3$NTRK3 <- clin$NTRK3
+write.csv(Immune_NTRK3,file = "08_Immune_NTRK3.csv")
+
+
+###火山图
+rm(list=ls())
+Immune_NTRK3 <-read.csv("08_Immune_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+Immune_NTRK3 <-Immune_NTRK3[order(Immune_NTRK3$NTRK3),]
+table(Immune_NTRK3$NTRK3)
+library(limma)
+group <- factor(c(rep("Wild",8836),rep("XMut",348)))
+
+design <- model.matrix(~0+group)
+rownames(design)<-rownames(Immune_NTRK3)
+colnames(design)<-levels(group)
+
+library("edgeR")
+NTRK3<- Immune_NTRK3[,1:29]
+NTRK3<-as.data.frame(t(NTRK3))
+
+fit <-lmFit(NTRK3,design)
+
+contrasts <-paste(rev(levels(group)),collapse="-")
+cont.matrix <-makeContrasts(contrasts = contrasts,levels= design)
+fit2 =contrasts.fit(fit,cont.matrix)
+fit2 <-eBayes(fit2)
+
+DEG = topTable(fit2,coef =contrasts, n=Inf )
+DEG =na.omit(DEG)
+write.csv(DEG,file = "08_limma_up_and_down.csv")
+
+##设置筛选阈值
+padj_cutoff=0.05
+log2FC_cutoff=0.01
+DEG$significance  <- as.factor(ifelse(DEG$adj.P.Val < padj_cutoff & abs(DEG$logFC) > log2FC_cutoff,
+                                       ifelse(DEG$logFC > log2FC_cutoff ,'UP','DOWN'),'NOT'))
+
+this_title <- paste0(' Up :  ',nrow(DEG[DEG$significance =='UP',]) ,
+                     '\n Down : ',nrow(DEG[DEG$significance =='DOWN',]),
+                     '\n adj.P.Val <= ',padj_cutoff,
+                     '\n FoldChange >= ',round(2^log2FC_cutoff,3))
+library(ggplot2)
+g <- ggplot(data=DEG, 
+            aes(x=logFC, y=-log10(adj.P.Val),
+                color=significance)) +
+  #点和背景
+  geom_point(alpha=0.4, size=1) +
+  theme_classic()+ #无网格线
+  #坐标轴
+  xlab("log2 ( FoldChange )") + 
+  ylab("-log10 ( adj.P.Val )") +
+  #标题文本
+  ggtitle( this_title ) +
+  #分区颜色                   
+  scale_colour_manual(values = c('blue','grey','red'))+ 
+  #辅助线
+  geom_vline(xintercept = c(-log2FC_cutoff,log2FC_cutoff),lty=4,col="grey",lwd=0.8) +
+  geom_hline(yintercept = -log10(padj_cutoff),lty=4,col="grey",lwd=0.8) +
+  #图例标题间距等设置
+  theme(plot.title = element_text(hjust = 0.5), 
+        plot.margin=unit(c(2,2,2,2),'lines'), #上右下左
+        legend.title = element_blank(),
+        legend.position="right")
+g
+
+
+
+
+#################################3.5 Chemokine
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut/04_TCGA/MHC_Chemokine"
+# 设置工作目录
+setwd(work_dir)
+
+TCGA <-read.csv("01_TCGA_NTRK3_clin.csv")
+TCGA_Mut <-TCGA[!duplicated(TCGA$PATIENT_ID),]
+
+Chemokines <-read.csv("06_TCGA_Chemokines.csv",row.names = 1,check.names=FALSE)
+
+k <- rownames(Chemokines)
+row = match(k,TCGA_Mut$PATIENT_ID)
+row = na.omit(row)
+clin =TCGA_Mut[row,]
+
+k <- clin$PATIENT_ID
+row = match(k,rownames(Chemokines))
+row = na.omit(row)
+Chemokines_NTRK3 =Chemokines[row,]
+
+Chemokines_NTRK3$NTRK3 <- clin$NTRK3
+write.csv(Chemokines_NTRK3,file = "07_Chemokines_NTRK3.csv")
+
+
+###Mut Wild P
+rm(list=ls())
+Thorsson_NTRK3 <-read.csv("07_Chemokines_NTRK3.csv",row.names = 1,check.names=FALSE)
+
+library(ggpubr)
+compare_means(TAP2 ~ NTRK3, data = Thorsson_NTRK3)
+
+#求均值
+Mut_NTRK3 <- Thorsson_NTRK3[,c(38:79)]
+exp <- apply(Mut_NTRK3, 2, scale)
+rownames(exp) <- rownames(Mut_NTRK3)
+expr <- as.data.frame(exp)
+expr$NTRK3 <- Thorsson_NTRK3$NTRK3
+Data <- aggregate(expr[,c(1:42)],by = list(NTRK3 = expr$NTRK3),mean)
+rownames(Data) <- Data[,1]
+Data <-  Data[,-1]
+
+library(circlize)
+col_fun <- colorRamp2(
+  c(-0.2,0, 0.2), 
+  c("#01665e", "#8c510a", "red")#"#01665e"#8c510a
+)
+
+library(ComplexHeatmap)
+matt <- t(Data)
+Heatmap(
+  matt, 
+  name = "Expression",
+  col = col_fun,
+  column_order = order(colnames(matt)),
+  row_order = order(rownames(matt))
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
