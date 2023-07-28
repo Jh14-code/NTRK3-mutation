@@ -1,0 +1,570 @@
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut"
+# 设置工作目录
+setwd(work_dir)
+
+clinical <- read.csv("MSKCC_clinical.csv")
+Gene <- read.csv("MSKCC_mutations.csv")
+
+###去掉同义突变
+attach(Gene)
+r<-which(Consequence=="synonymous_variant")
+expr<- Gene[-r,]
+
+attach(expr)
+g <-"NTRK3"
+r<-which(Hugo_Symbol==g)
+Gene_r<-expr[r,]
+Gene_r<-Gene_r[!duplicated(Gene_r$Tumor_Sample_Barcode),]
+
+response<-clinical
+k <- Gene_r$Tumor_Sample_Barcode
+row = match(k,response$SAMPLE_ID)
+row = na.omit(row)
+n=length(row)
+
+response_ =response[row,]
+response_w =response[-row,]
+Resp <- rbind(response_,response_w)
+Resp$NTRK3 <- c(rep("XMut",n),rep("Wild",1572-n))
+write.csv(Resp,file = "01_MSKCC_NTRK3_clin.csv")
+
+library("survival")
+library(survminer)
+fit<- survfit(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = Resp)
+surv_pvalue(fit)$pval.txt
+ggsurvplot(fit, data = Resp,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(fit, data = Resp,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = Resp)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+###################
+####免疫应答
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_response.csv")
+#单个卡方检验 DCB
+Resp <-Resp[1:174,]
+table(Resp$Benefit,Resp$NTRK3)
+f=fisher.test(Resp$Benefit,Resp$NTRK3)
+f
+
+##ORR
+table(Resp$Best_treatment_response,Resp$NTRK3)
+fisher.test(Resp$Best_treatment_response,Resp$NTRK3)
+
+attach(Resp)
+r<-which(CANCER_TYPE=="Non-Small Cell Lung Cancer")
+clin <- Resp[r,]
+table(clin$Benefit,clin$NTRK3)
+fisher.test(clin$Benefit,clin$NTRK3)
+
+clin <- Resp[-r,]
+table(clin$Benefit,clin$NTRK3)
+fisher.test(clin$Benefit,clin$NTRK3)
+
+###################
+####黑色素瘤
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Melanoma")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###非小细胞肺癌
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Non-Small Cell Lung Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Bladder Cancer
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Bladder Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Colorectal Cancer
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Colorectal Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Head and Neck Cancer
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Head and Neck Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Esophagogastric Cancer
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Esophagogastric Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Renal Cell Carcinoma
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Renal Cell Carcinoma")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Glioma
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+r<-which(CANCER_TYPE=="Glioma")
+clin <- Resp[r,]
+table(clin$NTRK3)
+
+###################
+####Breast cancer
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+attach(Resp)
+table(Resp$CANCER_TYPE)
+r<-which(CANCER_TYPE=="Breast Cancer")
+clin <- Resp[r,]
+
+attach(clin)
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =clin, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = clin)
+ggsurvplot(KM, data = clin,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = clin,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = clin)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+###################
+###Other tumor
+rm(list=ls())
+Resp <- read.csv("01_MSKCC_NTRK3_clin.csv")
+
+table(Resp$CANCER_TYPE)
+g <-"Non-Small Cell Lung Cancer"
+r<-which(Resp$CANCER_TYPE ==g)
+NSCLC_r<- Resp[-r,]
+g <-"Melanoma"
+r<-which(NSCLC_r$CANCER_TYPE ==g)
+Other_r<- NSCLC_r[-r,]
+
+KM <- survfit(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data =Other_r, type = 'kaplan-meier', conf.type = 'log')
+KM
+summary(KM)$table
+survdiff(Surv(OS_MONTHS,Survival_status) ~ NTRK3, data = Other_r)
+ggsurvplot(KM, data = Other_r,
+           pval = TRUE,
+           pval.coord = c(0.5,0.05),
+           risk.table = TRUE,
+           xlab = "Follow up time (months)",
+           legend = c(0.8,0.75),
+           legend.title = "",
+           legend.labs = c("Mut", "Wild"),
+           palette="lancet", ylab = "Overall survival" )
+###添加HR ,CI ,P
+p3 <- ggsurvplot(KM, data = Other_r,
+                 pval = TRUE,
+                 pval.coord = c(0.5,0.05),
+                 risk.table = TRUE,
+                 xlab = "Follow up time (months)",
+                 legend = c(0.8,0.75),
+                 legend.title = "",
+                 legend.labs = c("Mut", "Wild"),
+                 palette="jto", ylab = "Overall survival" )
+res_cox<-coxph(Surv(OS_MONTHS, Survival_status) ~ NTRK3, data = Other_r)
+p3$plot = p3$plot + ggplot2::annotate("text",x = 5, y = 0.25,
+                                      label = paste("HR :",round(summary(res_cox)$conf.int[1],2))) + ggplot2::annotate("text",x = 5, y = 0.15,
+                                                                                                                       label = paste("(","95%CI:",round(summary(res_cox)$conf.int[3],2),"-",round(summary(res_cox)$conf.int[4],2),")",sep = ""))+
+  ggplot2::annotate("text",x = 5, y = 0.1,
+                    label = paste("P:",round(summary(res_cox)$coef[5],4)))
+p3
+
+
+
+rm(list=ls())
+# 设置环境参数
+work_dir <- "C:/Users/huangjing/Desktop/01_Mutation_ICB/NTRK3_Mut"
+# 设置工作目录
+setwd(work_dir)
+
+# bar_plot 2021/01/19
+# 导入所需的包
+library(ggplot2)
+library(ggthemr)
+library(ggsignif)
+library(tidyverse)
+library(dplyr)
+library(ggpubr)
+library(devEMF)
+
+# 导入并处理数据,需要两张表，一个是原始汇总表格，另外一些是每一个测量数据的均值和标准差
+clinical <- read.csv("02_DCB.csv")#row.names = 1,check.names=FALSE)
+
+
+# SOD
+SOD_mean <- clinical %>% 
+  dplyr::group_by(Group) %>% 
+  dplyr::summarize(
+    count=n(),
+    mean = mean(Makeup),
+    sd = sd(Makeup)
+  )
+
+
+#####################################################################
+plot_data1 <- SOD_mean
+p4 <- ggplot()+ 
+  geom_bar(data=plot_data1,mapping=aes(x=Group,y=mean,fill=Group), # fill填充
+           position="dodge", # 柱状图格式
+           stat="identity", # 数据格式
+           width = 0.7)+  # 柱状图尺寸
+  scale_fill_manual(values = c("#4E4E56", "#DA635D"))+ # 柱状图颜色
+  scale_y_continuous(limits =c(0, 100) ,expand = c(0,0))+ # y轴的范围
+  theme_classic(  # 主题设置，这个是无线条主题
+    base_line_size = 1 # 坐标轴的粗细
+  )+
+  labs(title="",x="",y="DCB")+ # 添加标题，x轴，y轴内容
+  theme(plot.title = element_text(size = 20,
+                                  colour = "red",
+                                  hjust = 0.5),
+        axis.title.y = element_text(size = 15, 
+                                    # family = "myFont", 
+                                    color = "black",
+                                    face = "bold", 
+                                    vjust = 1.9, 
+                                    hjust = 0.5, 
+                                    angle = 90),
+        legend.title = element_text(color="black", # 修改图例的标题
+                                    size=15, 
+                                    face="bold"),
+        legend.text = element_text(color="black", # 设置图例标签文字
+                                   size = 10, 
+                                   face = "bold"),
+        axis.text.x = element_text(size = 13,  # 修改X轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0), #角度
+        axis.text.y = element_text(size = 13,  # 修改y轴上字体大小，
+                                   # family = "myFont", # 类型
+                                   color = "black", # 颜色
+                                   face = "bold", #  face取值：plain普通，bold加粗，italic斜体，bold.italic斜体加粗
+                                   vjust = 0.5, # 位置
+                                   hjust = 0.5, 
+                                   angle = 0) #角度
+  ) 
+p4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
